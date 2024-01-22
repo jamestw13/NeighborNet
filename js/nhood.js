@@ -7,6 +7,7 @@ class Neighborhood {
     this.homes = [this.startingHome];
 
     this.#generateHomes();
+    console.log({ homes: this.homes.map(h => h.startingPoint) });
   }
 
   #generateHomes() {
@@ -24,13 +25,15 @@ class Neighborhood {
           this.homes[i - 1]
         );
 
-        const collisions = this.homes.filter(h => h.footprint.intersectsPoly(home.footprint));
+        const collisions = this.homes.filter(
+          h =>
+            h.footprint.intersectsPoly(home.footprint) ||
+            (h.startingPoint === home.startingPoint && h.angle === home.angle)
+          // ||
+          // h.plot.intersectsPoly(home.plot)
+        );
         console.log({ collisions });
-        if (
-          !collisions.length
-          // &&
-          // !this.homes.filter(h => h.roadSegment.intersectsSegment(home.plot.segments[0])).length
-        ) {
+        if (!collisions.length) {
           valid = true;
           console.log('passed');
           this.homes.push(home);

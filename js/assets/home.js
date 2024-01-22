@@ -25,7 +25,7 @@ class Home {
   }
 
   #getFootprint() {
-    const p1 = this.#calculateEndpoint(this.plot.points[0], 20, this.angle + 45);
+    const p1 = this.#calculateEndpoint(this.plot.points[0], 30, this.angle + 45);
     const p2 = this.#calculateEndpoint(this.plot.points[1], 10, this.angle + 135);
     const p3 = this.#calculateEndpoint(this.plot.points[2], 10, this.angle - 135);
     const p4 = this.#calculateEndpoint(this.plot.points[3], 20, this.angle - 45);
