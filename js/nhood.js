@@ -1,5 +1,5 @@
 class Neighborhood {
-  constructor(neighbors) {
+  constructor() {
     this.neighbors = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
 
     this.startingHome = new Home(0, new Point(canvas.width / 2, canvas.height / 2));
@@ -7,7 +7,6 @@ class Neighborhood {
     this.homes = [this.startingHome];
 
     this.#generateHomes();
-    console.log({ homes: this.homes.map(h => h.startingPoint) });
   }
 
   #generateHomes() {
@@ -32,10 +31,10 @@ class Neighborhood {
           // ||
           // h.plot.intersectsPoly(home.plot)
         );
-        console.log({ collisions });
+
         if (!collisions.length) {
           valid = true;
-          console.log('passed');
+
           this.homes.push(home);
           startingPoints.push(home.roadSegment.p2);
         }
