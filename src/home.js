@@ -1,13 +1,16 @@
 import * as THREE from 'three';
+import { randRgb } from '@ngneat/falso';
 
 export default class Home {
-  constructor(id, startingPoint, angle) {
+  constructor(id, startPoint, angle) {
     this.id = id;
-    this.startingPoint = startingPoint;
+    this.startPoint = startPoint;
     this.width = 60;
     this.depth = 120;
-    this.endPoint = endpoint(startingPoint, angle, this.width);
+    this.endPoint = endpoint(startPoint, angle, this.width);
+
     this.angle = angle;
+    this.color = randRgb();
 
     this.roadSegment = this.#generateRoadSegment();
     this.plot = this.#generatePlot();
@@ -16,13 +19,12 @@ export default class Home {
 
   #generateRoadSegment() {
     const material = new THREE.LineBasicMaterial({
-      color: `rgb(${Math.floor(Math.random() * 255)},${Math.floor(Math.random() * 255)},${Math.floor(
-        Math.random() * 255
-      )})`,
+      color: 'white',
+      // color: `rgba(${this.color}, 1)`,
     });
     const geometry = new THREE.BufferGeometry().setFromPoints([
-      this.startingPoint,
-      endpoint(this.startingPoint, this.angle, this.width),
+      this.startPoint,
+      endpoint(this.startPoint, this.angle, this.width),
     ]);
 
     const line = new THREE.Line(geometry, material);
@@ -31,39 +33,28 @@ export default class Home {
   }
   #generatePlot() {
     const material = new THREE.MeshBasicMaterial({
-      color: `rgb(${Math.floor(Math.random() * 255)},${Math.floor(Math.random() * 255)},${Math.floor(
-        Math.random() * 255
-      )})`,
+      color: this.color,
       side: THREE.DoubleSide,
       // wireframe: true,
     });
 
-    const geometry = new THREE.BufferGeometry();
-
-    const verticies = new Float32Array([
-      this.startingPoint.x,
-      this.startingPoint.y,
-      this.startingPoint.z,
-      this.endPoint.x,
-      this.endPoint.y,
-      this.endPoint.z,
-
-      endpoint(this.endPoint, this.angle + Math.PI / 2, this.depth).x,
-      endpoint(this.endPoint, this.angle + Math.PI / 2, this.depth).y,
-      endpoint(this.endPoint, this.angle + Math.PI / 2, this.depth).z,
-
-      endpoint(this.startingPoint, this.angle + Math.PI / 2, this.depth).x,
-      endpoint(this.startingPoint, this.angle + Math.PI / 2, this.depth).y,
-      endpoint(this.startingPoint, this.angle + Math.PI / 2, this.depth).z,
-    ]);
-    const indices = [0, 1, 2, 2, 3, 0];
-
-    geometry.setIndex(indices);
-    geometry.setAttribute('position', new THREE.BufferAttribute(verticies, 3));
+    const geometry = new THREE.PlaneGeometry(this.width, this.depth);
 
     const plot = new THREE.Mesh(geometry, material);
 
-    console.log(plot.geometry);
+    plot.rotation.set(Math.PI / 2, 0, this.angle);
+
+    const offsetX = (this.endPoint.x - this.startPoint.x) / 2;
+    const offsetZ = (this.endPoint.z - this.startPoint.z) / 2;
+
+    const otherx = (this.depth / 2) * -Math.sin(this.angle);
+    const otherz = (this.depth / 2) * Math.cos(this.angle);
+
+    const newX = this.startPoint.x + offsetX + otherx;
+    const newZ = this.startPoint.z + offsetZ + otherz;
+
+    plot.position.set(newX, 0, newZ);
+    plot.scale.set(0.9, 0.9, 0.9);
 
     return plot;
   }
