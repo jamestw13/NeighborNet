@@ -19,7 +19,7 @@ export default class Home {
 
   #generateRoadSegment() {
     const material = new THREE.LineBasicMaterial({
-      color: 'white',
+      color: 'red',
       // color: `rgba(${this.color}, 1)`,
     });
     const geometry = new THREE.BufferGeometry().setFromPoints([
@@ -53,7 +53,7 @@ export default class Home {
     const newX = this.startPoint.x + offsetX + otherx;
     const newZ = this.startPoint.z + offsetZ + otherz;
 
-    plot.position.set(newX, 0, newZ);
+    plot.position.set(newX, 3, newZ);
     plot.scale.set(0.9, 0.9, 0.9);
 
     return plot;

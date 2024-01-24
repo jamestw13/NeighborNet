@@ -1,91 +1,133 @@
 import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
 import Home from './home';
 import { rand, randNumber } from '@ngneat/falso';
 
 export default class Nhood {
-  constructor(numNeighbors = 3) {
-    this.neighbors = new Array(numNeighbors).fill();
+  constructor(numNeighbors = 1000) {
+    this.numNeighbors = numNeighbors;
+    this.neighbors = [];
+    while (this.numNeighbors > 0) {
+      const max = Math.floor(this.numNeighbors / 10) > 1 ? Math.floor(this.numNeighbors / 10) : 1;
+      const flatmates = randNumber({ min: 1, max: Math.floor(this.numNeighbors / 10) || 1 });
+      this.numNeighbors -= flatmates;
+      this.neighbors.push(flatmates);
+    }
+    console.log(this.neighbors, this.neighbors.length);
 
     this.W_WIDTH = window.innerWidth;
     this.W_HEIGHT = window.innerHeight;
 
     this.scene = new THREE.Scene();
 
-    const axesHelper = new THREE.AxesHelper(120);
+    const axesHelper = new THREE.AxesHelper(1000);
 
-    const plane = new THREE.Mesh(
-      new THREE.PlaneGeometry(1000, 1000),
-      new THREE.MeshBasicMaterial({ color: 0x00ff00, side: THREE.DoubleSide, wireframe: true })
+    const ground = new THREE.Mesh(
+      new THREE.PlaneGeometry(2000, 2000),
+      new THREE.MeshBasicMaterial({ color: '#8BFF88', side: THREE.DoubleSide })
     );
-    plane.rotation.x = Math.PI / 2;
+    ground.rotation.x = Math.PI / 2;
 
-    this.scene.add(axesHelper, plane);
+    this.scene.add(axesHelper, ground);
+    this.scene.background = new THREE.Color(0x11aaff);
 
     this.camera = new THREE.PerspectiveCamera(90, this.W_WIDTH / this.W_HEIGHT, 0.1, 2000);
     this.camera.position.set(0, 400, 400);
     this.camera.rotation.x = -Math.PI / 3;
-    this.renderer = this.#createRenderer();
 
-    this.homes = [new Home(0, new THREE.Vector3(0, 0, 0), 0)];
+    this.renderer = this.#createRenderer();
+    this.controls = new OrbitControls(this.camera, this.renderer.domElement);
+    this.controls.enableDamping = true; // an animation loop is required when either damping or auto-rotation are enabled
+    this.controls.dampingFactor = 0.25;
+    this.controls.screenSpacePanning = false;
+    this.controls.maxPolarAngle = Math.PI / 2;
+
+    this.homes = [];
 
     this.#generateHomes();
   }
 
   #generateHomes() {
-    let startPoints = [this.homes[0].startPoint, ...this.homes.map(h => h.endPoint)];
-    for (let i = 1; i < this.neighbors.length; i++) {
-      let invalid = true;
-      let newHome;
-      // while (invalid) {
-      const startPoint = rand(startPoints);
+    while (this.homes.length < this.neighbors.length) {
+      for (let i = 0; i < this.neighbors.length; i++) {
+        // set up starter home
+        if (i === 0) {
+          const home = new Home(i, new THREE.Vector3(0, 5, 0), 0);
+          this.homes.push(home);
+          continue;
+        }
 
-      const angle = (Math.PI / 4) * randNumber({ min: 0, max: 7 });
-      newHome = new Home(i, startPoint, angle);
+        let startPoints = [this.homes[0].startPoint, ...this.homes.map(h => h.endPoint)];
 
-      if (!this.#checkPlotCollision()) {
-        invalid = false;
+        let angleArray = [0, 1, 2, 3, 4, 5, 6, 7];
+        while (startPoints.length > 0) {
+          const startPoint = rand(startPoints);
+          const angleChoice = rand(angleArray);
+          const angle = (Math.PI / 4) * angleChoice;
+
+          const newHome = new Home(i, startPoint, angle);
+
+          if (!this.#plotCollides(newHome)) {
+            this.homes.push(newHome);
+
+            break;
+          } else if (angleArray.length > 1) {
+            angleArray = angleArray.filter(a => a !== angleChoice);
+
+            continue;
+          } else {
+            angleArray = [0, 1, 2, 3, 4, 5, 6, 7];
+            startPoints = startPoints.filter(p => p !== startPoint);
+
+            continue;
+          }
+        }
+        if (startPoints.length === 0) {
+          this.homes = [];
+          break;
+        }
       }
-      // }
-      this.homes.push(newHome);
-      startPoints.push(newHome.endPoint);
-      // this.homes.forEach(h => console.log(h.startPoint, h.angle / 180));
     }
   }
 
   #createRenderer() {
-    const renderer = new THREE.WebGLRenderer();
-    renderer.setSize(window.innerWidth - 20, window.innerHeight - 50);
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    const parentDiv = document.querySelector('#three-canvas');
     document.querySelector('#three-canvas').appendChild(renderer.domElement);
+
+    renderer.setSize(parentDiv.clientWidth, parentDiv.clientHeight);
     return renderer;
   }
 
   render() {
     this.scene.add(...this.homes.map(h => h.roadSegment));
     this.scene.add(...this.homes.map(h => h.plot));
-    this.renderer.render(this.scene, this.camera);
-  }
-  #checkPlotCollision() {
-    const boxes = this.homes.map(home => {
-      const box = new THREE.Box3().setFromObject(home.plot);
 
-      return { plot: home, box };
+    const animate = () => {
+      requestAnimationFrame(animate);
+      this.controls.update();
+      this.renderer.render(this.scene, this.camera);
+    };
+    animate();
+  }
+
+  #plotCollides(newHome) {
+    const collisionList = this.homes.filter(h => {
+      const h1Box = new THREE.Box3().setFromObject(h.plot);
+      // const rotationMatrix1 = new THREE.Matrix4().extractRotation(h.plot.matrixWorld); // Extract the rotation matrix from the object
+      // h1Box.applyMatrix4(rotationMatrix1); // Apply the rotation matrix to the AABB
+
+      const h2Box = new THREE.Box3().setFromObject(newHome.plot);
+      // const rotationMatrix2 = new THREE.Matrix4().extractRotation(newHome.plot.matrixWorld); // Extract the rotation matrix from the object
+      // h2Box.applyMatrix4(rotationMatrix2); // Apply the rotation matrix to the AABB
+
+      //   `plot ${h.id} ${h1Box.intersectsBox(h2Box) ? 'collides' : 'does not collide'} with plot ${newHome.id}`
+      // );
+
+      return h1Box.intersectsBox(h2Box);
     });
 
-    for (let i = 0; i < boxes.length; i++) {
-      for (let j = i + 1; j < boxes.length; j++) {
-        console.log(
-          this.homes[i].startPoint,
-          this.homes[i].angle / 180,
-          this.homes[j].startPoint,
-          this.homes[j].angle / 180
-        );
-        if (boxes[i].box.intersectsBox(boxes[j].box) && !boxes[i].box.equals(boxes[j].box)) {
-          console.log('Collision detected between plot ' + i + ' and plot ' + j);
-          return true;
-        }
-      }
-    }
-    console.log('No collision detected');
-    return false;
+    return collisionList.length > 0;
   }
 }
