@@ -53,7 +53,7 @@ export default class Nhood {
       for (let i = 0; i < this.neighbors.length; i++) {
         // set up starter home
         if (i === 0) {
-          const home = new Home(i, new THREE.Vector3(0, 5, 0), 0);
+          const home = new Home(i, new THREE.Vector3(0, 5, 0), 0, this.neighbors[i]);
           this.homes.push(home);
           continue;
         }
@@ -66,7 +66,7 @@ export default class Nhood {
           const angleChoice = rand(angleArray);
           const angle = (Math.PI / 4) * angleChoice;
 
-          const newHome = new Home(i, startPoint, angle);
+          const newHome = new Home(i, startPoint, angle, this.neighbors[i]);
 
           if (!this.#plotCollides(newHome)) {
             this.homes.push(newHome);
@@ -102,7 +102,7 @@ export default class Nhood {
 
   render() {
     this.scene.add(...this.homes.map(h => h.roadSegment));
-    this.scene.add(...this.homes.map(h => h.plot));
+    this.scene.add(...this.homes.map(h => h.building));
 
     const animate = () => {
       requestAnimationFrame(animate);

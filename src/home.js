@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { randRgb } from '@ngneat/falso';
 
 export default class Home {
-  constructor(id, startPoint, angle) {
+  constructor(id, startPoint, angle, floors = 1) {
     this.id = id;
     this.startPoint = startPoint;
     this.width = 60;
@@ -14,7 +14,8 @@ export default class Home {
 
     this.roadSegment = this.#generateRoadSegment();
     this.plot = this.#generatePlot();
-    // this.footprint = this.#generateFootprint();
+    this.floors = floors;
+    this.building = this.#generateBuilding();
   }
 
   #generateRoadSegment() {
@@ -57,6 +58,34 @@ export default class Home {
     plot.scale.set(0.9, 0.9, 0.9);
 
     return plot;
+  }
+
+  #generateBuilding() {
+    const material = new THREE.MeshBasicMaterial({
+      color: '#0000cc',
+      wireframe: true,
+    });
+    const height = 10 * this.floors;
+    const geometry = new THREE.BoxGeometry(this.width, this.depth, height);
+
+    const building = new THREE.Mesh(geometry, material);
+
+    // building.rotation.set(Math.PI / 2, 0, this.angle);
+    building.rotation.set(Math.PI / 2, 0, this.angle);
+
+    const offsetX = (this.endPoint.x - this.startPoint.x) / 2;
+    const offsetZ = (this.endPoint.z - this.startPoint.z) / 2;
+
+    const otherx = (this.depth / 2) * -Math.sin(this.angle);
+    const otherz = (this.depth / 2) * Math.cos(this.angle);
+
+    const newX = this.startPoint.x + offsetX + otherx;
+    const newZ = this.startPoint.z + offsetZ + otherz;
+
+    building.position.set(newX, height / 2, newZ);
+    building.scale.set(0.4, 0.6, 1);
+
+    return building;
   }
 }
 
