@@ -10,9 +10,9 @@ export default class Home {
     this.startPoint = startPoint;
     this.width = width;
     this.depth = 120;
-    this.endPoint = endpoint(startPoint, ordinal, this.width);
-
     this.angle = (Math.PI / 4) * ordinal;
+    this.endPoint = endpoint(startPoint, this.angle, this.width);
+
     this.color = randRgb();
 
     this.roadSegment = this.#generateRoadSegment();
@@ -88,5 +88,55 @@ export default class Home {
     building.scale.set(0.4, 0.6, 1);
 
     return building;
+  }
+
+  derivedArea() {
+    const p1 = this.startPoint;
+    const p2 = endpoint(this.startPoint, this.angle, this.width);
+    const p3 = endpoint(p2, (Math.PI / 4) * (this.ordinal % 7) + 2, this.depth);
+    const p4 = endpoint(p1, (Math.PI / 4) * (this.ordinal + 2), this.depth);
+    const p5 = new THREE.Vector3(p1.x, p1.y + 8, p1.z);
+    const p6 = endpoint(p5, this.angle, this.width);
+    const p7 = endpoint(p6, (Math.PI / 4) * (this.ordinal + 2), this.depth);
+    const p8 = endpoint(p5, (Math.PI / 4) * (this.ordinal + 2), this.depth);
+
+    const verticies = new Float32Array([
+      p1.x,
+      p1.y,
+      p1.z,
+
+      p2.x,
+      p2.y,
+      p2.z,
+
+      p3.x,
+      p3.y,
+      p3.z,
+
+      p4.x,
+      p4.y,
+      p4.z,
+
+      p5.x,
+      p5.y,
+      p5.z,
+
+      p6.x,
+      p6.y,
+      p6.z,
+
+      p7.x,
+      p7.y,
+      p7.z,
+
+      p8.x,
+      p8.y,
+      p8.z,
+    ]);
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.BufferAttribute(verticies, 3));
+    geometry.setIndex([0, 1, 5, 0, 5, 4, 1, 2, 6, 1, 6, 5, 2, 3, 7, 2, 7, 6, 3, 0, 4, 3, 4, 7, 4, 5, 6, 4, 6, 7]);
+
+    return new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({ color: 'red', wireframe: true }));
   }
 }

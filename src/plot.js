@@ -1,4 +1,7 @@
+import * as THREE from 'three';
+
 import { randNumber } from '@ngneat/falso';
+import { endpoint } from './utils';
 
 /**
  * @class Plot
@@ -8,28 +11,60 @@ import { randNumber } from '@ngneat/falso';
  * @property {number} width - The width of the plot along the street. Default is 60
  */
 export default class Plot {
-  constructor(startPoint, ordinal, width = randNumber({ min: 40, max: 200 })) {
+  constructor(startPoint, ordinal, width = 60) {
     this.startPoint = startPoint;
     this.ordinal = ordinal;
     this.width = width;
+    this.depth = 120;
   }
 
-  plotsIntersect(otherPlot) {
-    const x1 = this.startPoint.x;
-    const z1 = this.startPoint.z;
-    const x2 = this.startPoint.x + this.width * Math.cos((Math.PI / 4) * this.ordinal);
-    const z2 = this.startPoint.z + this.width * Math.sin((Math.PI / 4) * this.ordinal);
-    const x3 = otherPlot.startPoint.x;
-    const z3 = otherPlot.startPoint.z;
-    const x4 = otherPlot.startPoint.x + otherPlot.width * Math.cos((Math.PI / 4) * otherPlot.ordinal);
-    const z4 = otherPlot.startPoint.z + otherPlot.width * Math.sin((Math.PI / 4) * otherPlot.ordinal);
+  derivedArea() {
+    const p1 = this.startPoint;
+    const p2 = endpoint(this.startPoint, (Math.PI / 4) * this.ordinal, this.width);
+    const p3 = endpoint(p2, (Math.PI / 4) * (this.ordinal + 2), this.depth);
+    const p4 = endpoint(p1, (Math.PI / 4) * (this.ordinal + 2), this.depth);
+    const p5 = new THREE.Vector3(p1.x, p1.y + 8, p1.z);
+    const p6 = endpoint(p5, (Math.PI / 4) * this.ordinal, this.width);
+    const p7 = endpoint(p6, (Math.PI / 4) * (this.ordinal + 2), this.depth);
+    const p8 = endpoint(p5, (Math.PI / 4) * (this.ordinal + 2), this.depth);
 
-    const d = (x1 - x2) * (z3 - z4) - (z1 - z2) * (x3 - x4);
-    if (d === 0) return false;
+    const verticies = new Float32Array([
+      p1.x,
+      p1.y,
+      p1.z,
 
-    const t = ((x1 - x3) * (z3 - z4) - (z1 - z3) * (x3 - x4)) / d;
-    const u = -((x1 - x2) * (z1 - z3) - (z1 - z2) * (x1 - x3)) / d;
+      p2.x,
+      p2.y,
+      p2.z,
 
-    return t > 0 && t < 1 && u > 0 && u < 1;
+      p3.x,
+      p3.y,
+      p3.z,
+
+      p4.x,
+      p4.y,
+      p4.z,
+
+      p5.x,
+      p5.y,
+      p5.z,
+
+      p6.x,
+      p6.y,
+      p6.z,
+
+      p7.x,
+      p7.y,
+      p7.z,
+
+      p8.x,
+      p8.y,
+      p8.z,
+    ]);
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.BufferAttribute(verticies, 3));
+    geometry.setIndex([0, 1, 5, 0, 5, 4, 1, 2, 6, 1, 6, 5, 2, 3, 7, 2, 7, 6, 3, 0, 4, 3, 4, 7, 4, 5, 6, 4, 6, 7]);
+
+    return new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({ color: 'red', wireframe: true }));
   }
 }

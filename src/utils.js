@@ -7,3 +7,14 @@ export function endpoint(start, angle, distance) {
 
   return new THREE.Vector3(x, y, z);
 }
+
+export const testVectors = [
+  { vector: new THREE.Vector3(1, 0, 0), ordinal: 0 },
+  { vector: new THREE.Vector3(1, 0, 1), ordinal: 1 },
+  { vector: new THREE.Vector3(0, 0, 1), ordinal: 2 },
+  { vector: new THREE.Vector3(-1, 0, 1), ordinal: 3 },
+  { vector: new THREE.Vector3(-1, 0, 0), ordinal: 4 },
+  { vector: new THREE.Vector3(-1, 0, -1), ordinal: 5 },
+  { vector: new THREE.Vector3(0, 0, -1), ordinal: 6 },
+  { vector: new THREE.Vector3(1, 0, -1), ordinal: 7 },
+];
