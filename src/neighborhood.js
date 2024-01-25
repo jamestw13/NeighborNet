@@ -11,9 +11,9 @@ export default class Nhood {
     this.homes = [];
     this.openPlots = this.#setOpenPlots();
     console.log('openPlots', this.openPlots);
-    const savedData = null;
-    // const savedData = JSON.parse(localStorage.getItem('homeData'));
-    // console.log({ savedData });
+    // const savedData = null;
+    const savedData = JSON.parse(localStorage.getItem('homeData'));
+    console.log({ savedData });
     this.numNeighbors = savedData ? savedData.numNeighbors : 2000;
 
     let unhousedNeighbors = this.numNeighbors;
@@ -38,6 +38,8 @@ export default class Nhood {
     } else {
       this.#generateHomes();
     }
+
+    this.#testCollide();
 
     // THREEJS SETUP
     this.W_WIDTH = window.innerWidth;
@@ -69,20 +71,14 @@ export default class Nhood {
   #setOpenPlots(chosenPlot) {
     if (!chosenPlot) {
       console.log('no chosen plot');
-      return [
-        { startPoint: new THREE.Vector3(0, 5, 0), angle: 0 },
-        { startPoint: new THREE.Vector3(0, 5, 0), angle: 1 },
-        { startPoint: new THREE.Vector3(0, 5, 0), angle: 2 },
-        { startPoint: new THREE.Vector3(0, 5, 0), angle: 3 },
-        { startPoint: new THREE.Vector3(0, 5, 0), angle: 4 },
-        { startPoint: new THREE.Vector3(0, 5, 0), angle: 5 },
-        { startPoint: new THREE.Vector3(0, 5, 0), angle: 6 },
-        { startPoint: new THREE.Vector3(0, 5, 0), angle: 7 },
-      ];
+      return [{ startPoint: new THREE.Vector3(0, 5, 0), angles: [0, 1, 2, 3, 4, 5, 6, 7] }];
     } else {
+      const indicesToRemove = [(index - 1 + length) % length, index, (index + 1) % length];
       console.log('chosenPlot', chosenPlot);
     }
   }
+
+  #testCollide() {}
 
   #generateHomes() {
     console.time('generate homes');
@@ -93,7 +89,7 @@ export default class Nhood {
           const plot = rand(this.openPlots);
           const home = new Home(i, plot.startPoint, (Math.PI / 4) * plot.angle, this.neighbors[i]);
           this.homes.push(home);
-          this.#setOpenPlots(plot);
+          // this.#setOpenPlots(plot);
           continue;
         }
 
