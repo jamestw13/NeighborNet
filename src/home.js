@@ -1,5 +1,6 @@
 import * as THREE from 'three';
-import { randRgb } from '@ngneat/falso';
+import { randRgb, seed } from '@ngneat/falso';
+seed('neighbornet');
 
 export default class Home {
   constructor(id, startPoint, angle, floors = 1) {
@@ -20,8 +21,7 @@ export default class Home {
 
   #generateRoadSegment() {
     const material = new THREE.LineBasicMaterial({
-      color: 'red',
-      // color: `rgba(${this.color}, 1)`,
+      color: `rgba(${this.color}, 1)`,
     });
     const geometry = new THREE.BufferGeometry().setFromPoints([
       this.startPoint,
@@ -62,8 +62,8 @@ export default class Home {
 
   #generateBuilding() {
     const material = new THREE.MeshBasicMaterial({
-      color: '#0000cc',
-      wireframe: true,
+      color: this.color,
+      // wireframe: true,
     });
     const height = 10 * this.floors;
     const geometry = new THREE.BoxGeometry(this.width, this.depth, height);

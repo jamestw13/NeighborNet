@@ -2,26 +2,48 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 import Home from './home';
-import { rand, randNumber } from '@ngneat/falso';
+import { rand, randNumber, seed } from '@ngneat/falso';
+
+seed('neighbornet');
 
 export default class Nhood {
-  constructor(numNeighbors = 1000) {
-    this.numNeighbors = numNeighbors;
+  constructor() {
+    this.homes = [];
+    this.openPlots = this.#setOpenPlots();
+    console.log('openPlots', this.openPlots);
+    const savedData = null;
+    // const savedData = JSON.parse(localStorage.getItem('homeData'));
+    // console.log({ savedData });
+    this.numNeighbors = savedData ? savedData.numNeighbors : 2000;
+
+    let unhousedNeighbors = this.numNeighbors;
     this.neighbors = [];
-    while (this.numNeighbors > 0) {
-      const max = Math.floor(this.numNeighbors / 10) > 1 ? Math.floor(this.numNeighbors / 10) : 1;
-      const flatmates = randNumber({ min: 1, max: Math.floor(this.numNeighbors / 10) || 1 });
-      this.numNeighbors -= flatmates;
+    while (unhousedNeighbors > 0) {
+      const max = Math.floor(unhousedNeighbors / 10) > 1 ? Math.floor(unhousedNeighbors / 10) : 1;
+      const flatmates = randNumber({ min: 1, max: max });
+      unhousedNeighbors -= flatmates;
       this.neighbors.push(flatmates);
     }
-    console.log(this.neighbors, this.neighbors.length);
 
+    if (savedData?.homes) {
+      for (const home of savedData.homes) {
+        const homeObj = new Home(
+          home.id,
+          new THREE.Vector3(home.startPoint.x, home.startPoint.y, home.startPoint.z),
+          home.angle,
+          home.floors
+        );
+        this.homes.push(homeObj);
+      }
+    } else {
+      this.#generateHomes();
+    }
+
+    // THREEJS SETUP
     this.W_WIDTH = window.innerWidth;
     this.W_HEIGHT = window.innerHeight;
 
     this.scene = new THREE.Scene();
-
-    const axesHelper = new THREE.AxesHelper(1000);
 
     const ground = new THREE.Mesh(
       new THREE.PlaneGeometry(2000, 2000),
@@ -29,7 +51,7 @@ export default class Nhood {
     );
     ground.rotation.x = Math.PI / 2;
 
-    this.scene.add(axesHelper, ground);
+    this.scene.add(ground);
     this.scene.background = new THREE.Color(0x11aaff);
 
     this.camera = new THREE.PerspectiveCamera(90, this.W_WIDTH / this.W_HEIGHT, 0.1, 2000);
@@ -42,24 +64,44 @@ export default class Nhood {
     this.controls.dampingFactor = 0.25;
     this.controls.screenSpacePanning = false;
     this.controls.maxPolarAngle = Math.PI / 2;
+  }
 
-    this.homes = [];
-
-    this.#generateHomes();
+  #setOpenPlots(chosenPlot) {
+    if (!chosenPlot) {
+      console.log('no chosen plot');
+      return [
+        { startPoint: new THREE.Vector3(0, 5, 0), angle: 0 },
+        { startPoint: new THREE.Vector3(0, 5, 0), angle: 1 },
+        { startPoint: new THREE.Vector3(0, 5, 0), angle: 2 },
+        { startPoint: new THREE.Vector3(0, 5, 0), angle: 3 },
+        { startPoint: new THREE.Vector3(0, 5, 0), angle: 4 },
+        { startPoint: new THREE.Vector3(0, 5, 0), angle: 5 },
+        { startPoint: new THREE.Vector3(0, 5, 0), angle: 6 },
+        { startPoint: new THREE.Vector3(0, 5, 0), angle: 7 },
+      ];
+    } else {
+      console.log('chosenPlot', chosenPlot);
+    }
   }
 
   #generateHomes() {
+    console.time('generate homes');
     while (this.homes.length < this.neighbors.length) {
       for (let i = 0; i < this.neighbors.length; i++) {
         // set up starter home
         if (i === 0) {
-          const home = new Home(i, new THREE.Vector3(0, 5, 0), 0, this.neighbors[i]);
+          const plot = rand(this.openPlots);
+          const home = new Home(i, plot.startPoint, (Math.PI / 4) * plot.angle, this.neighbors[i]);
           this.homes.push(home);
+          this.#setOpenPlots(plot);
           continue;
         }
 
         let startPoints = [this.homes[0].startPoint, ...this.homes.map(h => h.endPoint)];
-
+        // .filter(
+        //   point => !this.invalidStartPoints.includes(point)
+        // );
+        // console.log('startPoints', startPoints);
         let angleArray = [0, 1, 2, 3, 4, 5, 6, 7];
         while (startPoints.length > 0) {
           const startPoint = rand(startPoints);
@@ -70,15 +112,17 @@ export default class Nhood {
 
           if (!this.#plotCollides(newHome)) {
             this.homes.push(newHome);
+            console.log('home', i, 'created');
 
             break;
           } else if (angleArray.length > 1) {
             angleArray = angleArray.filter(a => a !== angleChoice);
-
+            console.log('angleArray empty');
             continue;
           } else {
             angleArray = [0, 1, 2, 3, 4, 5, 6, 7];
             startPoints = startPoints.filter(p => p !== startPoint);
+            // this.invalidStartPoints.push(startPoint);
 
             continue;
           }
@@ -89,6 +133,16 @@ export default class Nhood {
         }
       }
     }
+    console.timeEnd('generate homes');
+    console.log('numNeighbors', this.numNeighbors);
+    localStorage.setItem(
+      'homeData',
+      JSON.stringify({
+        numNeighbors: this.numNeighbors,
+        homes: this.homes.map(h => ({ id: h.id, startPoint: h.startPoint, angle: h.angle, floors: h.floors })),
+      })
+      // this.homes.map(h => ({ id: h.id, startPointx: h.startPoint.x, startPointz: h.startPoint.z, angle: h.angle }))
+    );
   }
 
   #createRenderer() {
