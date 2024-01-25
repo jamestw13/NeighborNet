@@ -1,16 +1,18 @@
 import * as THREE from 'three';
 import { randRgb, seed } from '@ngneat/falso';
+import { endpoint } from './utils';
+
 seed('neighbornet');
 
 export default class Home {
-  constructor(id, startPoint, angle, floors = 1) {
+  constructor(id, startPoint, ordinal, floors = 1, width) {
     this.id = id;
     this.startPoint = startPoint;
-    this.width = 60;
+    this.width = width;
     this.depth = 120;
-    this.endPoint = endpoint(startPoint, angle, this.width);
+    this.endPoint = endpoint(startPoint, ordinal, this.width);
 
-    this.angle = angle;
+    this.angle = (Math.PI / 4) * ordinal;
     this.color = randRgb();
 
     this.roadSegment = this.#generateRoadSegment();
@@ -87,12 +89,4 @@ export default class Home {
 
     return building;
   }
-}
-
-function endpoint(start, angle, distance) {
-  const x = parseFloat((start.x + distance * Math.cos(angle)).toFixed(10));
-  const y = parseFloat(start.y.toFixed(10));
-  const z = parseFloat((start.z + distance * Math.sin(angle)).toFixed(10));
-
-  return new THREE.Vector3(x, y, z);
 }

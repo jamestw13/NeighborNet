@@ -2,44 +2,27 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 import Home from './home';
+import Plot from './plot';
 import { rand, randNumber, seed } from '@ngneat/falso';
+import { endpoint } from './utils';
 
 seed('neighbornet');
 
 export default class Nhood {
   constructor() {
     this.homes = [];
-    this.openPlots = this.#setOpenPlots();
-    console.log('openPlots', this.openPlots);
-    // const savedData = null;
-    const savedData = JSON.parse(localStorage.getItem('homeData'));
-    console.log({ savedData });
-    this.numNeighbors = savedData ? savedData.numNeighbors : 2000;
-
-    let unhousedNeighbors = this.numNeighbors;
-    this.neighbors = [];
-    while (unhousedNeighbors > 0) {
-      const max = Math.floor(unhousedNeighbors / 10) > 1 ? Math.floor(unhousedNeighbors / 10) : 1;
-      const flatmates = randNumber({ min: 1, max: max });
-      unhousedNeighbors -= flatmates;
-      this.neighbors.push(flatmates);
+    this.openPlots = [];
+    for (let i = 0; i < 8; i++) {
+      this.openPlots.push(new Plot(new THREE.Vector3(0, 5, 0), i));
     }
 
-    if (savedData?.homes) {
-      for (const home of savedData.homes) {
-        const homeObj = new Home(
-          home.id,
-          new THREE.Vector3(home.startPoint.x, home.startPoint.y, home.startPoint.z),
-          home.angle,
-          home.floors
-        );
-        this.homes.push(homeObj);
-      }
-    } else {
-      this.#generateHomes();
-    }
+    this.numNeighbors = 10;
 
-    this.#testCollide();
+    this.graph = [];
+
+    this.#generateGraph();
+
+    this.#buildHomes();
 
     // THREEJS SETUP
     this.W_WIDTH = window.innerWidth;
@@ -68,77 +51,36 @@ export default class Nhood {
     this.controls.maxPolarAngle = Math.PI / 2;
   }
 
-  #setOpenPlots(chosenPlot) {
-    if (!chosenPlot) {
-      console.log('no chosen plot');
-      return [{ startPoint: new THREE.Vector3(0, 5, 0), angles: [0, 1, 2, 3, 4, 5, 6, 7] }];
-    } else {
-      const indicesToRemove = [(index - 1 + length) % length, index, (index + 1) % length];
-      console.log('chosenPlot', chosenPlot);
+  #generateGraph() {
+    for (let i = 0; i < this.numNeighbors; i++) {
+      // select an open plot
+      let plot = rand(this.openPlots);
+
+      // add it to the graph
+      this.graph.push(plot);
+
+      // add new open plots based on new endpoint
+      for (let j = 0; j < 8; j++) {
+        this.openPlots.push(new Plot(endpoint(plot.startPoint, (Math.PI / 4) * plot.ordinal, 60), i));
+      }
+
+      // remove invalid plots from openPlots
+      for (let j = 0; j < this.graph.length; j++) {
+        for (let k = 0; k < this.openPlots.length; k++) {
+          if (this.graph[j].plotsIntersect(this.openPlots[k])) {
+            this.openPlots.splice(k, 1);
+          }
+        }
+      }
+      console.log({ openPlots: this.openPlots, graph: this.graph });
     }
   }
 
-  #testCollide() {}
-
-  #generateHomes() {
-    console.time('generate homes');
-    while (this.homes.length < this.neighbors.length) {
-      for (let i = 0; i < this.neighbors.length; i++) {
-        // set up starter home
-        if (i === 0) {
-          const plot = rand(this.openPlots);
-          const home = new Home(i, plot.startPoint, (Math.PI / 4) * plot.angle, this.neighbors[i]);
-          this.homes.push(home);
-          // this.#setOpenPlots(plot);
-          continue;
-        }
-
-        let startPoints = [this.homes[0].startPoint, ...this.homes.map(h => h.endPoint)];
-        // .filter(
-        //   point => !this.invalidStartPoints.includes(point)
-        // );
-        // console.log('startPoints', startPoints);
-        let angleArray = [0, 1, 2, 3, 4, 5, 6, 7];
-        while (startPoints.length > 0) {
-          const startPoint = rand(startPoints);
-          const angleChoice = rand(angleArray);
-          const angle = (Math.PI / 4) * angleChoice;
-
-          const newHome = new Home(i, startPoint, angle, this.neighbors[i]);
-
-          if (!this.#plotCollides(newHome)) {
-            this.homes.push(newHome);
-            console.log('home', i, 'created');
-
-            break;
-          } else if (angleArray.length > 1) {
-            angleArray = angleArray.filter(a => a !== angleChoice);
-            console.log('angleArray empty');
-            continue;
-          } else {
-            angleArray = [0, 1, 2, 3, 4, 5, 6, 7];
-            startPoints = startPoints.filter(p => p !== startPoint);
-            // this.invalidStartPoints.push(startPoint);
-
-            continue;
-          }
-        }
-        if (startPoints.length === 0) {
-          this.homes = [];
-          break;
-        }
-      }
+  #buildHomes() {
+    for (let i = 0; i < this.graph.length; i++) {
+      const home = new Home(i, this.graph[i].startPoint, this.graph[i].ordinal, 1, this.graph[i].width);
+      this.homes.push(home);
     }
-    console.timeEnd('generate homes');
-    console.log('numNeighbors', this.numNeighbors);
-    localStorage.setItem(
-      'homeData',
-      JSON.stringify({
-        numNeighbors: this.numNeighbors,
-        homes: this.homes.map(h => ({ id: h.id, startPoint: h.startPoint, angle: h.angle, floors: h.floors })),
-      })
-      // this.homes.map(h => ({ id: h.id, startPointx: h.startPoint.x, startPointz: h.startPoint.z, angle: h.angle }))
-    );
   }
 
   #createRenderer() {
@@ -160,24 +102,5 @@ export default class Nhood {
       this.renderer.render(this.scene, this.camera);
     };
     animate();
-  }
-
-  #plotCollides(newHome) {
-    const collisionList = this.homes.filter(h => {
-      const h1Box = new THREE.Box3().setFromObject(h.plot);
-      // const rotationMatrix1 = new THREE.Matrix4().extractRotation(h.plot.matrixWorld); // Extract the rotation matrix from the object
-      // h1Box.applyMatrix4(rotationMatrix1); // Apply the rotation matrix to the AABB
-
-      const h2Box = new THREE.Box3().setFromObject(newHome.plot);
-      // const rotationMatrix2 = new THREE.Matrix4().extractRotation(newHome.plot.matrixWorld); // Extract the rotation matrix from the object
-      // h2Box.applyMatrix4(rotationMatrix2); // Apply the rotation matrix to the AABB
-
-      //   `plot ${h.id} ${h1Box.intersectsBox(h2Box) ? 'collides' : 'does not collide'} with plot ${newHome.id}`
-      // );
-
-      return h1Box.intersectsBox(h2Box);
-    });
-
-    return collisionList.length > 0;
   }
 }
