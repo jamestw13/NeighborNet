@@ -1,28 +1,21 @@
+import { endpoint } from './utils.js';
 import * as THREE from 'three';
 import { OBB } from 'three/addons/math/OBB.js';
 
-import { randNumber } from '@ngneat/falso';
-import { endpoint, testVectors } from './utils';
-
-/**
- * @class Plot
- * @classdesc A plot is a single line that is drawn on the canvas. It is defined by a starting point, an ordinal, and a width.
- * @property {Vector3} startPoint - The starting point of the plot.
- * @property {number} ordinal - The ordinal direction angle of the plot. 0 is west, 1 is southwest, etc.
- * @property {number} width - The width of the plot along the street. Default is 60
- */
-export default class Plot {
+export default class RoadExtension {
   constructor(startPoint, ordinal, width = 60, depth = 135) {
     this.startPoint = startPoint;
+    this.intersection = endpoint(this.startPoint, (Math.PI / 4) * ordinal, width / 2);
     this.endPoint = endpoint(startPoint, (Math.PI / 4) * ordinal, width);
+    this.connector = endpoint(this.intersection, (Math.PI / 4) * (ordinal + (2 % 7)), depth);
     this.ordinal = ordinal;
     this.angle = (Math.PI / 4) * ordinal;
     this.width = width;
     this.depth = depth;
     this.color = 'orange';
 
-    // this.obb = this.derivedObb();
-
+    this.roadSegment = this.#generateRoad();
+    this.building = this.roadSegment;
     this.plotArea = this.#generatePlot();
   }
 
@@ -56,24 +49,18 @@ export default class Plot {
     return plotArea;
   }
 
-  // derivedObb() {
-  //   const offsetX = (this.endPoint.x - this.startPoint.x) / 2;
-  //   const offsetZ = (this.endPoint.z - this.startPoint.z) / 2;
+  #generateRoad() {
+    const material = new THREE.LineBasicMaterial({
+      color: 0x000000,
+    });
+    const roadGeometry = new THREE.BufferGeometry().setFromPoints([this.startPoint, this.endPoint]);
 
-  //   const otherx = (this.depth / 2) * -Math.sin(this.angle);
-  //   const otherz = (this.depth / 2) * Math.cos(this.angle);
+    const connectorGeometry = new THREE.BufferGeometry().setFromPoints([this.intersection, this.connector]);
 
-  //   const newX = this.startPoint.x + offsetX + otherx;
-  //   const newZ = this.startPoint.z + offsetZ + otherz;
+    const group = new THREE.Group();
+    group.add(new THREE.Line(roadGeometry, material));
+    group.add(new THREE.Line(connectorGeometry, material));
 
-  //   const euler = new THREE.Euler(Math.PI / 2, 0, this.angle, 'XYZ');
-  //   const rotationMatrix4 = new THREE.Matrix4().makeRotationFromEuler(euler);
-  //   const rotationMatrix3 = new THREE.Matrix3().setFromMatrix4(rotationMatrix4);
-
-  //   return new OBB(
-  //     new THREE.Vector3(newX, 2, newZ),
-  //     new THREE.Vector3(this.width / 2, 2, this.depth / 2),
-  //     rotationMatrix3
-  //   );
-  // }
+    return group;
+  }
 }

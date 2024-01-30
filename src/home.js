@@ -2,14 +2,14 @@ import * as THREE from 'three';
 import { randRgb, seed } from '@ngneat/falso';
 import { endpoint } from './utils';
 
-seed('neighbornet');
+//seed('neighbornet');
 
 export default class Home {
-  constructor(id, startPoint, ordinal, floors = 1, width) {
+  constructor(id, startPoint, ordinal, floors = 1, width = 60, depth = 135) {
     this.id = id;
     this.startPoint = startPoint;
     this.width = width;
-    this.depth = 120;
+    this.depth = depth;
     this.angle = (Math.PI / 4) * ordinal;
     this.endPoint = endpoint(startPoint, this.angle, this.width);
 
@@ -23,7 +23,7 @@ export default class Home {
 
   #generateRoadSegment() {
     const material = new THREE.LineBasicMaterial({
-      color: `rgba(${this.color}, 1)`,
+      color: 0x000000,
     });
     const geometry = new THREE.BufferGeometry().setFromPoints([
       this.startPoint,

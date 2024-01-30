@@ -3,10 +3,11 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 import Home from './home';
 import Plot from './plot';
+import RoadExtension from './roadExtension';
 import { rand, randNumber, seed } from '@ngneat/falso';
 import { endpoint, testVectors } from './utils';
 
-seed('neighbornet');
+seed('jimmy');
 
 export default class Nhood {
   constructor() {
@@ -17,9 +18,10 @@ export default class Nhood {
     }
     // this.openPlots.forEach(p => console.log(p.derivedArea().geometry.attributes.position.array));
 
-    this.numNeighbors = 20;
+    this.numNeighbors = 2000;
 
     this.graph = [];
+    this.scene = new THREE.Scene();
 
     this.#generateGraph();
 
@@ -28,8 +30,6 @@ export default class Nhood {
     // THREEJS SETUP
     this.W_WIDTH = window.innerWidth;
     this.W_HEIGHT = window.innerHeight;
-
-    this.scene = new THREE.Scene();
 
     const ground = new THREE.Mesh(
       new THREE.PlaneGeometry(2000, 2000),
@@ -40,7 +40,7 @@ export default class Nhood {
     this.scene.add(ground);
     this.scene.background = new THREE.Color(0x11aaff);
 
-    this.camera = new THREE.PerspectiveCamera(90, this.W_WIDTH / this.W_HEIGHT, 0.1, 2000);
+    this.camera = new THREE.PerspectiveCamera(90, this.W_WIDTH / this.W_HEIGHT, 0.1, 4000);
     this.camera.position.set(0, 400, 400);
     this.camera.rotation.x = -Math.PI / 3;
 
@@ -54,45 +54,75 @@ export default class Nhood {
 
   #generateGraph() {
     for (let i = 0; i < this.numNeighbors; i++) {
-      console.log({ i });
-      // select an open plot
-      let plot = rand(this.openPlots);
-      let plotOrdinal = plot.ordinal;
+      // console.log({ i });
+      if (this.openPlots.length === 0) {
+        // console.log('no open plots');
+        // remove a and put in a road
+        const index = randNumber({ min: 0, max: this.graph.length });
+        const replacement = this.graph[index];
+        // console.log({ index, replacement });
 
-      // add it to the graph
-      this.graph.push(plot);
+        const newRoad = new RoadExtension(
+          replacement.startPoint,
+          replacement.ordinal,
+          replacement.width,
+          replacement.depth
+        );
+        this.graph.splice(index, 1, newRoad);
 
-      // remove plots that collide with the new plot
-      console.log(this.openPlots);
-      this.openPlots = this.openPlots.filter(p => {
-        if (!plot.startPoint.equals(p.startPoint)) return true;
-        if (p.ordinal === plotOrdinal) return false;
-        if (p.ordinal === (plotOrdinal % 8) + 1) return false;
-        if (p.ordinal === (plotOrdinal % 8) - 1) return false;
-        else {
-          return true;
+        for (let l = 0; l < 8; l++) {
+          this.openPlots.push(new Plot(newRoad.connector, l));
         }
-      });
+      } else {
+        // select an open plot
+        let plot = rand(this.openPlots);
 
-      const newStart = endpoint(plot.startPoint, (Math.PI / 4) * plot.ordinal, 60);
-      const newOrdinal = (plotOrdinal % 8) + 2;
+        // add it to the graph
+        this.graph.push(plot);
 
-      for (let l = 0; l < 8; l++) {
-        if (l !== newOrdinal && l !== (newOrdinal % 8) + 1 && l !== (newOrdinal % 8) - 1)
+        // add new endpoint plots to openPlots
+        let plotOrdinal = plot.ordinal;
+        const newStart = endpoint(plot.startPoint, (Math.PI / 4) * plotOrdinal, 60);
+
+        for (let l = 0; l < 8; l++) {
           this.openPlots.push(new Plot(newStart, l));
+        }
+      }
+      // remove openPlots that conflict with graph plots
+      let collidedPlots = [];
+      for (let i = 0, il = this.openPlots.length; i < il; i++) {
+        const object = this.openPlots[i];
+
+        const obb = this.openPlots[i].plotArea.userData.obb;
+
+        for (let j = 0, jl = this.graph.length; j < jl; j++) {
+          if (this.graph[j] instanceof RoadExtension) continue;
+          const objectToTest = this.graph[j];
+
+          const obbToTest = objectToTest.plotArea.userData.obb;
+
+          // now perform intersection test
+
+          if (obb.intersectsOBB(obbToTest) === true) {
+            collidedPlots.push(i);
+          }
+        }
       }
 
-      // add new open plots based on new endpoint
-      for (const testVector of testVectors) {
-      }
-      console.log({ openPlots: this.openPlots, graph: this.graph });
+      // console.log(new Set(collidedPlots));
+      this.openPlots = this.openPlots.filter((_, index) => !new Set(collidedPlots).has(index));
     }
+    console.log(this.graph);
   }
 
   #buildHomes() {
     for (let i = 0; i < this.graph.length; i++) {
-      const home = new Home(i, this.graph[i].startPoint, this.graph[i].ordinal, 1, this.graph[i].width);
-      this.homes.push(home);
+      if (this.graph[i] instanceof RoadExtension) {
+        this.homes.push(this.graph[i]);
+      } else {
+        const home = new Home(i, this.graph[i].startPoint, this.graph[i].ordinal, 1, this.graph[i].width);
+        this.homes.push(home);
+      }
     }
   }
 
@@ -106,10 +136,13 @@ export default class Nhood {
   }
 
   render() {
+    console.log(this.homes);
     this.scene.add(...this.homes.map(h => h.roadSegment));
     this.scene.add(...this.homes.map(h => h.building));
-    // this.scene.add(...this.openPlots.map(p => p.derivedArea()));
-    // this.scene.add(...this.homes.map(h => h.derivedArea()));
+
+    if (this.openPlots.length > 0) {
+      this.scene.add(...this.openPlots.map(p => p.plotArea));
+    }
 
     const animate = () => {
       requestAnimationFrame(animate);
