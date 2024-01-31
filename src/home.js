@@ -1,16 +1,18 @@
 import * as THREE from 'three';
 import { randRgb, seed } from '@ngneat/falso';
-seed('neighbornet');
+import { endpoint } from './utils';
+
+//seed('neighbornet');
 
 export default class Home {
-  constructor(id, startPoint, angle, floors = 1) {
+  constructor(id, startPoint, ordinal, floors = 1, width = 60, depth = 135) {
     this.id = id;
     this.startPoint = startPoint;
-    this.width = 60;
-    this.depth = 120;
-    this.endPoint = endpoint(startPoint, angle, this.width);
+    this.width = width;
+    this.depth = depth;
+    this.angle = (Math.PI / 4) * ordinal;
+    this.endPoint = endpoint(startPoint, this.angle, this.width);
 
-    this.angle = angle;
     this.color = randRgb();
 
     this.roadSegment = this.#generateRoadSegment();
@@ -21,7 +23,7 @@ export default class Home {
 
   #generateRoadSegment() {
     const material = new THREE.LineBasicMaterial({
-      color: `rgba(${this.color}, 1)`,
+      color: 0x000000,
     });
     const geometry = new THREE.BufferGeometry().setFromPoints([
       this.startPoint,
@@ -87,12 +89,54 @@ export default class Home {
 
     return building;
   }
-}
 
-function endpoint(start, angle, distance) {
-  const x = parseFloat((start.x + distance * Math.cos(angle)).toFixed(10));
-  const y = parseFloat(start.y.toFixed(10));
-  const z = parseFloat((start.z + distance * Math.sin(angle)).toFixed(10));
+  derivedArea() {
+    const p1 = this.startPoint;
+    const p2 = endpoint(this.startPoint, this.angle, this.width);
+    const p3 = endpoint(p2, (Math.PI / 4) * (this.ordinal % 7) + 2, this.depth);
+    const p4 = endpoint(p1, (Math.PI / 4) * (this.ordinal + 2), this.depth);
+    const p5 = new THREE.Vector3(p1.x, p1.y + 8, p1.z);
+    const p6 = endpoint(p5, this.angle, this.width);
+    const p7 = endpoint(p6, (Math.PI / 4) * (this.ordinal + 2), this.depth);
+    const p8 = endpoint(p5, (Math.PI / 4) * (this.ordinal + 2), this.depth);
 
-  return new THREE.Vector3(x, y, z);
+    const verticies = new Float32Array([
+      p1.x,
+      p1.y,
+      p1.z,
+
+      p2.x,
+      p2.y,
+      p2.z,
+
+      p3.x,
+      p3.y,
+      p3.z,
+
+      p4.x,
+      p4.y,
+      p4.z,
+
+      p5.x,
+      p5.y,
+      p5.z,
+
+      p6.x,
+      p6.y,
+      p6.z,
+
+      p7.x,
+      p7.y,
+      p7.z,
+
+      p8.x,
+      p8.y,
+      p8.z,
+    ]);
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.BufferAttribute(verticies, 3));
+    geometry.setIndex([0, 1, 5, 0, 5, 4, 1, 2, 6, 1, 6, 5, 2, 3, 7, 2, 7, 6, 3, 0, 4, 3, 4, 7, 4, 5, 6, 4, 6, 7]);
+
+    return new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({ color: 'red', wireframe: true }));
+  }
 }
